@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import time
 from skimage import filters
 from collections import deque
 
@@ -19,54 +20,51 @@ def is_img_blurry(image_path):
     print (mean_gradient)
     return mean_gradient #Value of 1000> is focused
 
+#Algorithm to focus camera
+def focus_camera(direction_of_motor, rotation_factor, threshold):
+    #Define which camera you want to use (webcame = 0)
+    cam_port = 0
+    cam = cv.VideoCapture(cam_port) 
+  
+    #Read input of camera
+    _, previous_image = cam.read()
 
+    #Change height of camera (NEED TO FILL IN WHEN I GET TO STEPPER MOTOR CONTROLS)
+    #move_motor(direction_of_motor, rotation_factor)
 
-def adjust():
-    queue_size=2        #Length of queue (compare 2 images)
-    threshold = 1000    #Value of 1000+ is clear
+    #Add a 1 sec delay so there are no vibrations from the stepper motor
+    time.sleep(1)
 
-    #Initialize a deque to store captured images
-    image_queue = deque(maxlen=queue_size)
+    #Read camera input after heigh adjustment
+    _, current_image = cam.read()
+
+    #Find how much to rotate motor by
+    rotatation_factor = ((threshold - is_img_blurry(current_image))/100)
+
+    #If rotation factor is too low we exit the recursive function (8th of a turn)
+    if (rotatation_factor <= 0.125): 
+        print("Camera is in focus.")
+        return
+
+    #Compare focus of images
+    if (is_img_blurry(previous_image) > is_img_blurry(current_image)):
+        #Change direction of motor & how much to rotate by
+        direction_of_motor = -1
+        #move_motor(direction_of_motor, rotation_factor)
+        focus_camera(direction_of_motor, rotation_factor)
     
-    #Initialize a flag to indicate whether to continue capturing images
-    capturing = True
+    elif (is_img_blurry(previous_image) < is_img_blurry(current_image)):
+        #Change direction of motor & how much to rotate by (OPPOSITE DIRECTION)
+        direction_of_motor = 1
+        #move_motor(direction_of_motor, rotation_factor)
+        focus_camera(direction_of_motor, rotation_factor)
 
-    #Do autofocus until image is not blurry anymore 
-    while(capturing):
-
-        # Capture an image (replace this with your actual image capture code)
-        image = cv.VideoCapture(0).read()[1]  # Assuming capturing from a webcam
-
-        # Add the new image to the deque
-        image_queue.append(image)
-
-        # Compare consecutive pairs of images
-        if len(image_queue) == queue_size:
-            current_image = image_queue[-1]
-            previous_image = image_queue[-2]
-
-            #Checks if previous image is blurrier than current image
-            similarity_score = compare_images(previous_image, current_image)
-
-        #Stop "while" loop once camera is focus is greater than threshold val
-        if (is_img_blurry(current_image) > threshold):
-            capturing = False
-
-
-def compare_images(img1, img2):
-    pass
-#    if (is_img_blurry(img1) > is_img_blurry(img2)):
-
-    #TAKE IMAGE 1
-    #MOVE CAMERA 1-2 ROTATIONS UP
-    #TAKE IMAGE 2
-    #IDENTIFY IF IMG 1 OR IMG 2 IS MORE BLURRY
-    #IF IMG1 MORE BLURRY, MOVE CAMERA UP HALF ROTATION
-    #DEPEDNING ON HOW CLOSE IT IS TO THRESHOLD CHANGE INCREMENTS OF THRESHOLD 
-
-
-
+    #If blur value does not change, this means the camera height has not changed. 
+    elif (is_img_blurry(previous_image) == is_img_blurry(current_image)):
+        raise ValueError("No change in blur value, camera has not moved. Check if hardware is working.")
 
 
 test_img = "data\\blurry_images_test\\WIN_20231223_16_30_49_Pro.jpg"
 is_img_blurry(test_img)
+
+#focus_camera(-1, 200, 1000)
