@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wifi.h>
 
 // Define pin connections & motor's steps per revolution
 //X Motor
